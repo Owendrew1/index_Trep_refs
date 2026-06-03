@@ -1,0 +1,36 @@
+# Optional: decompress annotations (GFF/GTF/CDS/RNA/protein) and copy chr_mapping files.
+# Run: snakemake -s Snakefile.prep_aux --cores 4 -p
+
+configfile: "config/config.yaml"
+include: "workflow/common.smk"
+
+
+def aux_targets():
+    return [f"results/{r['source']}/{r['haplotype']}/.{r['row_id']}.done" for r in AUX_ROWS]
+
+
+rule all:
+    input:
+        aux_targets()
+
+
+rule prep_auxiliary:
+    input:
+        lambda wc: raw_path(aux_row(wc)),
+    output:
+        "results/{source}/{haplotype}/.{row_id}.done",
+    wildcard_constraints:
+        row_id=WC_AUX,
+    params:
+        dest=lambda wc: str(
+            OUT / aux_row(wc)["source"] / aux_row(wc)["haplotype"] / aux_row(wc)["file"].replace(".gz", "")
+        ),
+    shell:
+        """
+        mkdir -p $(dirname {params.dest})
+        case "{input}" in
+          *.gz) gzip -dc "{input}" > "{params.dest}" ;;
+          *)    cp "{input}" "{params.dest}" ;;
+        esac
+        touch {output}
+        """
