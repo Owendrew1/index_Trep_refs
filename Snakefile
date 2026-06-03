@@ -1,5 +1,5 @@
-# Default workflow: index genome FASTAs (gunzip + samtools + GATK + BWA).
-# Other workflows: Snakefile.prep_aux, Snakefile.mapping (see docs/WORKFLOWS.md)
+#Default workflow: index genome FASTAs (gunzip + samtools + GATK + BWA). 
+#Other workflows: Snakefile.prep_aux, Snakefile.mapping (in docs/WORKFLOWS.md) - split up for simplicity (340 ish rows - 90), activated through other commands noted 
 
 configfile: "config/config.yaml"
 include: "workflow/common.smk"
