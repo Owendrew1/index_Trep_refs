@@ -2,34 +2,10 @@
 # Run from repo root:
 #   snakemake -s workflow/Snakefile --directory workflow --cores 4 -p --use-conda
 
-import re
-from pathlib import Path
-
-
 configfile: "../config/config.yaml"
 include: "rules/common.smk"
 
-
-SRC = Path(config["source_dir"])
-LOG = f"{SRC}/Trep_ref_indexing_logs"
-ROWS = load_samples(config["samples_csv"])
-ROW_BY_ID = {r["row_id"]: r for r in ROWS}
-GENOMES = [r for r in ROWS if r["file_type"] == "genome"]
-ASM = lambda r: Path(r["file"].replace(".gz", "")).stem
-GENOME_LOOKUP = {(r["source"], ASM(r)): r for r in GENOMES}
-SOURCES = [r["source"] for r in GENOMES]
-ASSEMBLIES = [ASM(r) for r in GENOMES]
-SOURCE_SET = sorted(set(SOURCES))
-ASSEMBLY_SET = sorted(set(ASSEMBLIES))
-
-
-def genome_row(wc):
-    return GENOME_LOOKUP[(wc.source, wc.assembly)]
-
-
-def raw_path(r):
-    return str(SRC / r["source"] / r["file"])
-
+init_indexing(config)
 
 wildcard_constraints:
     source="|".join(re.escape(s) for s in SOURCE_SET),
@@ -38,7 +14,7 @@ wildcard_constraints:
 
 rule all:
     input:
-        f"{SRC}/Trep_ref_indexing.done",
+        DONE,
 
 
 rule decompress_genome:
@@ -103,6 +79,6 @@ rule Trep_ref_indexing_done:
         expand(rules.gatk_sequence_dictionary.output, zip, source=SOURCES, assembly=ASSEMBLIES),
         expand(rules.bwa_index.output, zip, source=SOURCES, assembly=ASSEMBLIES),
     output:
-        f"{SRC}/Trep_ref_indexing.done",
+        DONE,
     shell:
         "touch {output}"
