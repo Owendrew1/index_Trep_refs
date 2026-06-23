@@ -1,7 +1,7 @@
-# Index Trifolium repens genome FASTAs (NCBI download, gunzip, samtools, GATK, BWA).
+# Index Trifolium repens genome FASTAs (gunzip + samtools + GATK + BWA).
+# Genomes must already exist under source_dir — this pipeline does not download them.
 # Run from repo root:
 #   ./scripts/run_indexing.sh 4
-# Setup: conda env create -f environment.yaml  (Snakemake only; tools via --use-conda)
 
 configfile: "../config/config.yaml"
 include: "rules/common.smk"
@@ -12,35 +12,15 @@ rule all:
         DONE,
 
 
-rule download_genome:
-    output:
-        gz=lambda wc: raw_path(genome_row(wc)),
-    log:
-        f"{LOG}/download_genome/{{source}}_{{assembly}}.log",
-    params:
-        accession=lambda wc: accession(genome_row(wc)),
-        script=str(DOWNLOAD_SCRIPT),
-    conda:
-        DATASETS_CONDA,
-    shell:
-        """
-        if [[ -z "{params.accession}" ]]; then
-          echo "No GenBank accession for {wildcards.source}/{wildcards.assembly}" >&2
-          exit 1
-        fi
-        bash {params.script} {params.accession} {output.gz} {log}
-        """
-
-
 rule decompress_genome:
     input:
-        gz=genome_gz_input,
+        lambda wc: raw_path(genome_row(wc)),
     output:
         ref=f"{SRC}/{{source}}/{{assembly}}.fna",
     log:
         f"{LOG}/decompress_genome/{{source}}_{{assembly}}.log",
     shell:
-        "mkdir -p $(dirname {output.ref}) && gzip -dc {input.gz} > {output.ref} 2> {log}"
+        "mkdir -p $(dirname {output.ref}) && gzip -dc {input} > {output.ref} 2> {log}"
 
 
 rule samtools_faidx:

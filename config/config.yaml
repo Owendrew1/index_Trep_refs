@@ -1,5 +1,3 @@
-# Raw .fna.gz inputs and indexed outputs (scratch).
+# Raw .fna.gz inputs and indexed outputs (scratch). Place genomes here manually — no auto-download.
 source_dir: "/scratch/references/trifolium/repens"
 samples_csv: "../resources/samples.csv"
-# Download GCA/GCF assemblies from NCBI via datasets CLI when .fna.gz is missing.
-auto_download: true
