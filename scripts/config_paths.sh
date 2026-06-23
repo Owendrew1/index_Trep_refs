@@ -1,0 +1,6 @@
+# Shared config paths for bash helpers. Source from scripts/: source "$(dirname "$0")/config_paths.sh"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CFG="$ROOT/config/config.yaml"
+SRC="$(grep '^source_dir:' "$CFG" | sed 's/.*: *"\?\([^"]*\)"\?.*/\1/')"
+DONE="$SRC/Trep_ref_indexing.done"
+NGEN="$(awk -F, 'NR>1 && $5=="genome" {n++} END {print n+0}' "$ROOT/resources/samples.csv")"

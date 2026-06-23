@@ -1,15 +1,10 @@
-# Default workflow: index genome FASTAs (gunzip + samtools + GATK + BWA).
+# Index Trifolium repens genome FASTAs (NCBI download, gunzip, samtools, GATK, BWA).
 # Run from repo root:
-#   snakemake -s workflow/Snakefile --directory workflow --cores 4 -p --use-conda
+#   ./scripts/run_indexing.sh 4
+# Setup: conda env create -f environment.yaml  (Snakemake only; tools via --use-conda)
 
 configfile: "../config/config.yaml"
 include: "rules/common.smk"
-
-init_indexing(config)
-
-wildcard_constraints:
-    source="|".join(re.escape(s) for s in SOURCE_SET),
-    assembly="|".join(re.escape(a) for a in ASSEMBLY_SET),
 
 
 rule all:
@@ -17,15 +12,35 @@ rule all:
         DONE,
 
 
+rule download_genome:
+    output:
+        gz=lambda wc: raw_path(genome_row(wc)),
+    log:
+        f"{LOG}/download_genome/{{source}}_{{assembly}}.log",
+    params:
+        accession=lambda wc: accession(genome_row(wc)),
+        script=str(DOWNLOAD_SCRIPT),
+    conda:
+        DATASETS_CONDA,
+    shell:
+        """
+        if [[ -z "{params.accession}" ]]; then
+          echo "No GenBank accession for {wildcards.source}/{wildcards.assembly}" >&2
+          exit 1
+        fi
+        bash {params.script} {params.accession} {output.gz} {log}
+        """
+
+
 rule decompress_genome:
     input:
-        lambda wc: raw_path(genome_row(wc)),
+        gz=genome_gz_input,
     output:
         ref=f"{SRC}/{{source}}/{{assembly}}.fna",
     log:
         f"{LOG}/decompress_genome/{{source}}_{{assembly}}.log",
     shell:
-        "mkdir -p $(dirname {output.ref}) && gzip -dc {input} > {output.ref} 2> {log}"
+        "mkdir -p $(dirname {output.ref}) && gzip -dc {input.gz} > {output.ref} 2> {log}"
 
 
 rule samtools_faidx:
@@ -36,7 +51,7 @@ rule samtools_faidx:
     log:
         f"{LOG}/samtools_faidx/{{source}}_{{assembly}}.log",
     conda:
-        "envs/ref.yaml",
+        CONDA,
     shell:
         "samtools faidx {input.ref} 2> {log}"
 
@@ -49,7 +64,7 @@ rule gatk_sequence_dictionary:
     log:
         f"{LOG}/gatk_sequence_dictionary/{{source}}_{{assembly}}.log",
     conda:
-        "envs/ref.yaml",
+        CONDA,
     shell:
         "gatk CreateSequenceDictionary -R {input.ref} -O {output} 2> {log}"
 
@@ -68,16 +83,14 @@ rule bwa_index:
     log:
         f"{LOG}/bwa_index/{{source}}_{{assembly}}.log",
     conda:
-        "envs/ref.yaml",
+        CONDA,
     shell:
         "bwa index {input.ref} 2> {log}"
 
 
-rule Trep_ref_indexing_done:
+rule indexing_done:
     input:
-        expand(rules.samtools_faidx.output, zip, source=SOURCES, assembly=ASSEMBLIES),
-        expand(rules.gatk_sequence_dictionary.output, zip, source=SOURCES, assembly=ASSEMBLIES),
-        expand(rules.bwa_index.output, zip, source=SOURCES, assembly=ASSEMBLIES),
+        indexing_done_inputs,
     output:
         DONE,
     shell:
